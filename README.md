@@ -15,6 +15,22 @@ Each skill is a checklist-driven review that Claude runs automatically at a spec
 | `pre-launch` | Before every production deploy | Chains security, legal, SEO, and performance review; blockers must clear before launch |
 | `ux-psychology` | Inside `design-brief` / `design-qa`, or standalone | Audits a flow against 14 evidence-based behavioral principles (defaults, goal-gradient, endowment, anchoring, etc.), each with a legitimate-use vs. dark-pattern distinction |
 
+| `ship` | When handing off a feature, fix, or change to build end-to-end | Orchestrates the agent-managed delivery pipeline: acceptance criteria → implementation spec (approved by you) → engineer → blind adversarial code review on a different model → design + GTM review for user-facing work → adversarial QA against the criteria → Definition of Done gate → draft PR. Never merges or deploys |
+| `retro` | After a `/ship` run or a PR with substantial human corrections | The learning loop: proposes evidence-traced edits to the agent definitions and skills, one at a time for approval, with a mandatory consolidation pass so the instruction set stays lean |
+
+`agents/` holds the specialist agent definitions the `ship` pipeline delegates to:
+
+| Agent | Role | Model tier |
+|---|---|---|
+| `planner` | Reads the codebase and turns a scoped task into an implementation spec — files, signatures, edge cases, OPEN QUESTIONS surfaced for human approval before any code is written | Top |
+| `engineer` | Implements against acceptance criteria (and the spec, when one exists), writes tests alongside, discloses deviations and risks in a structured handoff | Top |
+| `code-reviewer` | Adversarial review of the diff — runs blind (no engineer rationale, no spec) on a different model so blind spots don't overlap; read-only by construction | Top (`opus`) |
+| `qa-verifier` | Tries to *refute* "it works": drives the real app, attacks edge cases, requires evidence for every claim; binary VERIFIED/REFUTED verdict | Efficient (`sonnet`) |
+| `design-strategist` | Reviews UI changes at three levels: design-system conformance, brand/product strategy fit, and a user-journey walkthrough as the target user | Efficient (`sonnet`) |
+| `gtm-strategist` | Reads each change as a message to the user: positioning fit, comprehension, copy that overclaims what the product enforces | Efficient (`sonnet`) |
+
+The pipeline's design principles: specs are approved by a human before code exists, the reviewer never sees the spec (decorrelation over conformance), every stage writes a durable artifact to `.pipeline/` that `retro` later reads as evidence, expensive models are spent only where errors compound (planning, review), and the pipeline always ends at a draft PR — a human merges.
+
 `rules/` holds the underlying review checklists (architecture, security, testing, legal, SEO, performance, UX psychology, design QA) that the skills above load and apply.
 
 ## Why this exists
@@ -23,4 +39,4 @@ I'm a non-technical PM building real products with Claude Code. These skills enc
 
 ## Using these skills
 
-Drop `skills/*` into `~/.claude/skills/` and `rules/*` into `~/.claude/rules/` (or the project-local `.claude/` equivalent). Claude Code will pick them up automatically and invoke them at the trigger points described in each `SKILL.md`.
+Drop `skills/*` into `~/.claude/skills/`, `agents/*` into `~/.claude/agents/`, and `rules/*` into `~/.claude/rules/` (or the project-local `.claude/` equivalents). Claude Code will pick them up automatically and invoke them at the trigger points described in each `SKILL.md`.
